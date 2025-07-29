@@ -1,25 +1,39 @@
-import logo from './logo.svg';
-import './App.css';
+// App.jsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./components/loginForm";
+import UserPage from "./pages/userPage";
+import DashboardPage from "./pages/dashboardPage";
+import ProtectedRoute from "./components/protectedRoute";
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    return (
+        <Routes>
+            <Route path="/" element={<Navigate to="/login" />} />
+            <Route path="/login" element={<LoginPage />} />
+
+            {/* Только для менеджера */}
+            <Route
+                path="/user"
+                element={
+                    <ProtectedRoute role="manager">
+                        <UserPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Только для админа */}
+            <Route
+                path="/dashboard"
+                element={
+                    <ProtectedRoute role="admin">
+                        <DashboardPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route path="*" element={<h2>404 — Страница не найдена</h2>} />
+        </Routes>
+    );
 }
 
 export default App;
