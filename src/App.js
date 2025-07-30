@@ -1,39 +1,40 @@
-// App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
+import ProtectedRoute, { RedirectIfLoggedIn } from "./components/protectedRoute";
 import LoginPage from "./components/loginForm";
 import UserPage from "./pages/userPage";
 import DashboardPage from "./pages/dashboardPage";
-import ProtectedRoute from "./components/protectedRoute";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-function App() {
+
+const App = () => {
     return (
-        <Routes>
-            <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="/login" element={<LoginPage />} />
-
-            {/* Только для менеджера */}
-            <Route
-                path="/user"
-                element={
-                    <ProtectedRoute role="manager">
-                        <UserPage />
-                    </ProtectedRoute>
-                }
-            />
-
-            {/* Только для админа */}
-            <Route
-                path="/dashboard"
-                element={
-                    <ProtectedRoute role="admin">
-                        <DashboardPage />
-                    </ProtectedRoute>
-                }
-            />
-
-            <Route path="*" element={<h2>404 — Страница не найдена</h2>} />
-        </Routes>
+            <Routes>
+                <Route
+                    path="/login"
+                    element={
+                        <RedirectIfLoggedIn>
+                            <LoginPage />
+                        </RedirectIfLoggedIn>
+                    }
+                />
+                <Route
+                    path="/user"
+                    element={
+                        <ProtectedRoute role="manager">
+                            <UserPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/dashboard"
+                    element={
+                        <ProtectedRoute role="admin">
+                            <DashboardPage />
+                        </ProtectedRoute>
+                    }
+                />
+            </Routes>
     );
-}
+};
 
 export default App;

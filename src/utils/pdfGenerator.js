@@ -1,7 +1,12 @@
 import pdfMake from "pdfmake/build/pdfmake";
+import vfsFonts from "pdfmake/build/vfs_fonts"; // 👈 ИМЕННО ТАК, без .pdfMake
+
 import headerImg from "../assets/header.jpeg";
 import footerImg from "../assets/footer.jpeg";
 import { loadImageAsBase64 } from "./loadImageBase64";
+
+// 👇 подключаем шрифты
+pdfMake.vfs = vfsFonts.vfs;
 
 export async function generatePDF(text, options = { open: false }) {
     const headerBase64 = await loadImageAsBase64(headerImg);

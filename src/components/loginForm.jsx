@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {useEffect, useState} from "react";
 import { useNavigate } from "react-router-dom";
 import TextField from "./textField";
 import { validator } from "../utils/validator";
@@ -7,11 +7,20 @@ const LoginForm = () => {
     const [data, setData] = useState({ name: "", password: "" });
     const [errors, setErrors] = useState({});
     const navigate = useNavigate();
-
     const handleChange = ({ name, value }) => {
         setData((prevState) => ({ ...prevState, [name]: value }));
     };
+    useEffect(() => {
+        const user = JSON.parse(localStorage.getItem("currentUser"));
+        if (user) {
+            navigate(user.role === "admin" ? "/dashboard" : "/user");
+        }
+    }, []);
 
+    useEffect(() => {
+        validate()
+
+    }, [data])
     const validConfigurator = {
         name: {
             isRequired: { message: "Please enter a name" },
@@ -51,31 +60,38 @@ const LoginForm = () => {
     const isValid = Object.keys(errors).length === 0;
 
     return (
-        <form onSubmit={handleSubmit} className="p-3">
-            <TextField
-                label="Name"
-                name="name"
-                type="text"
-                value={data.name}
-                onChange={handleChange}
-                error={errors.name}
-            />
-            <TextField
-                label="Password"
-                name="password"
-                type="password"
-                value={data.password}
-                onChange={handleChange}
-                error={errors.password}
-            />
-            <button
-                type="submit"
-                className="btn btn-primary w-100 mt-3"
-                disabled={!isValid}
-            >
-                Войти
-            </button>
-        </form>
+        <div className="container mt-5">
+            <div className="row">
+                <div className="col-md-6 offset-md-3 shadow p-4">
+                    <form onSubmit={handleSubmit} className="p-3">
+                        <TextField
+                            label="Name"
+                            name="name"
+                            type="text"
+                            value={data.name}
+                            onChange={handleChange}
+                            error={errors.name}
+                        />
+                        <TextField
+                            label="Password"
+                            name="password"
+                            type="password"
+                            value={data.password}
+                            onChange={handleChange}
+                            error={errors.password}
+                        />
+                        <button
+                            type="submit"
+                            className="btn btn-primary w-100 mt-3"
+                            disabled={!isValid}
+                        >
+                            Войти
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     );
 };
 
