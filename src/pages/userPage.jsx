@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { callOpenAI } from "../utils/callOpenAI";
 import { generatePDF } from "../utils/pdfGenerator";
 import Header from "../components/header";
 import Loader from "../components/loader";
@@ -9,27 +8,32 @@ import TextField from "../components/textField";
 import { validator } from "../utils/validator";
 
 const servicesList = [
+    "SatuBooster ERS",
     "ИИ ассистент",
-    "Bitrix24 интеграция",
-    "CRM NF Group",
-    "WhatsApp автоматизация",
-    "Техническая поддержка"
+    "VOIP",
+    "ThirdPart",
+    "Басқалары"
 ];
 
 const UserPage = () => {
-    const [text, setText] = useState("");
     const [title, setTitle] = useState("");
     const [selectedServices, setSelectedServices] = useState([]);
-    const [isValid, setIsValid] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [aiLoading, setAiLoading] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [emailStatus, setEmailStatus] = useState(null);
-    const navigate = useNavigate();
+    const [clientName, setClientName] = useState("");
+    const [managerCount, setManagerCount] = useState(0);
+    const [duration, setDuration] = useState(1);
+    const [techSupportType, setTechSupportType] = useState("fixed");
+    const [chatCount, setChatCount] = useState(1000);
+    const [chatPrice, setChatPrice] = useState(30);
+    const [voipMinutes, setVoipMinutes] = useState(1000);
+    const [voipPrice, setVoipPrice] = useState(9);
 
     const [data, setData] = useState({ email: "" });
     const [errors, setErrors] = useState({ email: "" });
     const [currentUser, setCurrentUser] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem("currentUser"));
@@ -38,28 +42,18 @@ const UserPage = () => {
     }, []);
 
     useEffect(() => {
-        setIsValid(text.trim().length >= 200);
-    }, [text]);
-
-    useEffect(() => {
         validate();
     }, [data]);
 
-    const validConfigurator = {
-        email: {
-            isRequired: { message: "Please enter an email" },
-            isEmail: { message: "Please enter a valid email address" },
-        },
-    };
-
     const validate = () => {
-        const errors = validator(data, validConfigurator);
+        const errors = validator(data, {
+            email: {
+                isRequired: { message: "Введите email" },
+                isEmail: { message: "Введите корректный email" },
+            },
+        });
         setErrors(errors);
         return Object.keys(errors).length === 0;
-    };
-
-    const handleInputChange = (e) => {
-        setText(e.target.value);
     };
 
     const handleEmailChange = ({ name, value }) => {
@@ -74,64 +68,25 @@ const UserPage = () => {
         );
     };
 
-    const handleTitleChange = (e) => {
-        setTitle(e.target.value);
-    };
-
-    const handleAIGenerate = async () => {
-        setAiLoading(true);
-
-        const titleText = title || "Коммерциялық ұсыныс";
-        const serviceList = selectedServices.length > 0
-            ? selectedServices.map(s => `• ${s}`).join("\n")
-            : "Қызметтер таңдалмады";
-
-        const priceConditions = `
-💰 Қосымша шарттар:
-•  До 5 менеджеров — по 3500 тг за каждого.
-•  С 6-го до 40-го менеджера — за каждого нового добавляется 1600 тг.
-•  Начиная с 41-го менеджера — за каждого дополнительного добавляется 1000 тг.
-`;
-
-        const prompt = `
-):
-
-🏥 [ЗАГОЛОВОК]
-Орындаушы: SatuBooster.Ai
-Сілтеме: https://satubooster.kz/nedzat/
-
-🔹 Қызмет құрамына кіреді:
-[УСЛУГИ]
-
-${priceConditions}
-
-📲 Байланыс:
-https://satubooster.kz/nedzat/
-WhatsApp: +7 707 965 2832
-
-Подставь значения:
-- [ЗАГОЛОВОК] = "${titleText}"
-- [УСЛУГИ] = "${serviceList}"
-
-Ответ строго на казахском языке. 
-`;
-
-        try {
-            const aiText = await callOpenAI(prompt);
-            setText(aiText);
-        } catch (e) {
-            setEmailStatus("error");
-        } finally {
-            setAiLoading(false);
-        }
-    };
-
+    const isERSSelected = selectedServices.includes("SatuBooster ERS");
+    const isAISelected = selectedServices.includes("ИИ ассистент");
+    const isVOIPSelected = selectedServices.includes("VOIP");
 
     const handleGenerate = async () => {
         setIsGenerating(true);
         try {
-            const blob = await generatePDF(text);
-            if (!blob || !(blob instanceof Blob)) throw new Error("Ошибка генерации PDF");
+            const blob = await generatePDF({
+                title,
+                services: selectedServices,
+                clientName,
+                managerCount,
+                techSupportType,
+                chatCount,
+                chatPrice,
+                duration,
+                voipMinutes,
+                voipPrice
+            });
             const url = URL.createObjectURL(blob);
             window.open(url, "_blank");
         } catch (e) {
@@ -142,13 +97,24 @@ WhatsApp: +7 707 965 2832
     };
 
     const handleSendEmail = async () => {
-        if (!data.email || !isValid) return;
+        if (!data.email) return;
         setIsSending(true);
 
         try {
-            const blob = await generatePDF(text);
-            const formData = new FormData();
+            const blob = await generatePDF({
+                title,
+                services: selectedServices,
+                clientName,
+                managerCount,
+                techSupportType,
+                chatCount,
+                chatPrice,
+                duration,
+                voipMinutes,
+                voipPrice
+            });
 
+            const formData = new FormData();
             formData.append("email", data.email);
             formData.append("file", blob, "kp.pdf");
             formData.append("username", currentUser.name);
@@ -192,103 +158,181 @@ WhatsApp: +7 707 965 2832
                         <input
                             type="text"
                             className="form-control mb-3"
-                            placeholder="Введите заголовок КП..."
+                            placeholder="Заголовок КП..."
                             value={title}
-                            onChange={handleTitleChange}
+                            onChange={(e) => setTitle(e.target.value)}
+                        />
+                        <input
+                            type="text"
+                            className="form-control mb-3"
+                            placeholder="Имя заказчика..."
+                            value={clientName}
+                            onChange={(e) => setClientName(e.target.value)}
                         />
 
-                        <div className="mb-3">
-                            <label className="form-label fw-bold">Выберите услуги:</label>
-                            <div className="d-flex flex-wrap gap-3">
-                                {servicesList.map((service) => (
-                                    <div key={service} className="form-check">
-                                        <input
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            id={service}
-                                            checked={selectedServices.includes(service)}
-                                            onChange={() => handleServiceToggle(service)}
-                                        />
-                                        <label className="form-check-label" htmlFor={service}>
-                                            {service}
-                                        </label>
-                                    </div>
-                                ))}
+                        <label className="form-label fw-bold">Выберите услуги:</label>
+                        <div className="d-flex flex-column gap-2 mb-3">
+                            {servicesList.map((service) => (
+                                <div key={service} className="form-check">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id={service}
+                                        checked={selectedServices.includes(service)}
+                                        onChange={() => handleServiceToggle(service)}
+                                    />
+                                    <label className="form-check-label" htmlFor={service}>
+                                        {service}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+
+                        {isERSSelected && (
+                            <div className="mb-3">
+                                <label>Количество менеджеров:</label>
+                                <input
+                                    type="number"
+                                    className="form-control mb-2"
+                                    value={managerCount}
+                                    onChange={(e) => setManagerCount(Number(e.target.value))}
+                                />
+                                <label>Мерзімі:</label>
+                                <div className="d-flex gap-3 flex-wrap">
+                                    {[1, 3, 6, 12].map((val) => (
+                                        <div key={val} className="form-check">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="duration"
+                                                id={`dur-${val}`}
+                                                value={val}
+                                                checked={duration === val}
+                                                onChange={() => setDuration(val)}
+                                            />
+                                            <label
+                                                className="form-check-label"
+                                                htmlFor={`dur-${val}`}
+                                            >
+                                                {val} ай
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        <textarea
-                            id="kpText"
-                            className="form-control"
-                            placeholder="Введите текст коммерческого предложения..."
-                            value={text}
-                            onChange={handleInputChange}
-                            minLength={200}
-                            style={{ minHeight: "250px", fontSize: "16px" }}
-                        />
+                        {isAISelected && (
+                            <div className="mb-3">
+                                <label className="form-label fw-bold">ИИ ассистент: способ оплаты</label>
+                                <div className="form-check">
+                                    <input
+                                        className="form-check-input"
+                                        type="radio"
+                                        name="aiPayment"
+                                        id="fixed"
+                                        value="fixed"
+                                        checked={techSupportType === "fixed"}
+                                        onChange={() => setTechSupportType("fixed")}
+                                    />
+                                    <label className="form-check-label" htmlFor="fixed">
+                                        Фиксированная (150 000 ₸)
+                                    </label>
+                                </div>
+                                <div className="form-check">
+                                    <input
+                                        className="form-check-input"
+                                        type="radio"
+                                        name="aiPayment"
+                                        id="per_chat"
+                                        value="per_chat"
+                                        checked={techSupportType === "per_chat"}
+                                        onChange={() => setTechSupportType("per_chat")}
+                                    />
+                                    <label className="form-check-label" htmlFor="per_chat">
+                                        По чатам
+                                    </label>
+                                </div>
+                            </div>
+                        )}
 
-                        <div id="textInfo" className="mt-2 text-start text-secondary">
-                            <p className="mb-1">
-                                <span id="charCount">{text.trim().length}</span> / 200 символов
-                            </p>
-                            {!isValid && (
-                                <p id="warning" className="text-danger">
-                                    Минимум 200 символов для генерации PDF
-                                </p>
-                            )}
-                        </div>
+                        {isAISelected && techSupportType === "per_chat" && (
+                            <>
+                                <label>Количество чатов:</label>
+                                <input
+                                    type="number"
+                                    className="form-control mb-2"
+                                    value={chatCount}
+                                    onChange={(e) => setChatCount(Number(e.target.value))}
+                                />
+                                <label>Цена за чат:</label>
+                                <input
+                                    type="number"
+                                    className="form-control mb-2"
+                                    value={chatPrice}
+                                    onChange={(e) => setChatPrice(Number(e.target.value))}
+                                />
+                            </>
+                        )}
+
+                        {isVOIPSelected && (
+                            <>
+                                <label>Количество минут (VOIP):</label>
+                                <input
+                                    type="number"
+                                    className="form-control mb-2"
+                                    value={voipMinutes}
+                                    onChange={(e) => setVoipMinutes(Number(e.target.value))}
+                                />
+                                <label>Цена за минуту (VOIP):</label>
+                                <input
+                                    type="number"
+                                    className="form-control mb-2"
+                                    value={voipPrice}
+                                    onChange={(e) => setVoipPrice(Number(e.target.value))}
+                                />
+                            </>
+                        )}
 
                         <div className="d-flex flex-wrap gap-2 mt-3">
-                            <button className="btn btn-primary" onClick={handleAIGenerate} disabled={aiLoading}>
-                                🤖 Сгенерировать черновик
-                            </button>
-                            <button className="btn btn-primary" onClick={handleGenerate} disabled={!isValid || isGenerating}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleGenerate}
+                                disabled={isGenerating}
+                            >
                                 📄 Сгенерировать PDF
                             </button>
                         </div>
                     </div>
 
                     <div className="col-md-4">
-                        <div className="mb-3">
-                            <TextField
-                                label="Email получателя"
-                                name="email"
-                                type="email"
-                                value={data.email}
-                                onChange={handleEmailChange}
-                                error={errors.email}
-                            />
-                        </div>
+                        <TextField
+                            label="Email получателя"
+                            name="email"
+                            type="email"
+                            value={data.email}
+                            onChange={handleEmailChange}
+                            error={errors.email}
+                        />
 
                         <button
-                            className="btn btn-primary w-100"
+                            className="btn btn-primary w-100 mt-2"
                             onClick={handleSendEmail}
-                            disabled={!isValid || !data.email || isSending}
+                            disabled={!data.email || isSending}
                         >
                             📧 Отправить PDF
                         </button>
 
                         {emailStatus === "success" && (
-                            <div
-                                className="mt-3 p-2 text-success border border-success rounded"
-                                style={{ backgroundColor: "#d1e7dd", color: "#0f5132" }}
-                            >
-                                ✅ Письмо успешно отправлено
-                            </div>
+                            <div className="mt-3 alert alert-success">✅ Письмо успешно отправлено</div>
                         )}
-
                         {emailStatus === "error" && (
-                            <div
-                                className="mt-3 p-2 text-danger border border-danger rounded"
-                                style={{ backgroundColor: "#f8d7da", color: "#842029" }}
-                            >
-                                ❌ Не удалось отправить письмо
-                            </div>
+                            <div className="mt-3 alert alert-danger">❌ Не удалось отправить письмо</div>
                         )}
                     </div>
                 </div>
 
-                <Loader visible={isGenerating || aiLoading || isSending} />
+                <Loader visible={isGenerating || isSending} />
             </main>
             <Footer />
         </>

@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import {Routes, Route } from "react-router-dom";
 import ProtectedRoute, { RedirectIfLoggedIn } from "./components/protectedRoute";
 import LoginPage from "./components/loginForm";
 import UserPage from "./pages/userPage";

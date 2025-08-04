@@ -1,5 +1,5 @@
 export async function callOpenAI(prompt) {
-    const apiKey = 'ss.....'; // ← замени на свой настоящий OpenAI API ключ
+    const apiKey = ""
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",

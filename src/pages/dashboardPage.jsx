@@ -3,19 +3,45 @@ import { useNavigate } from "react-router-dom";
 
 const DashboardPage = () => {
     const [logs, setLogs] = useState([]);
+    const [filteredLogs, setFilteredLogs] = useState([]);
+    const [search, setSearch] = useState("");
+    const [sortBy, setSortBy] = useState("user");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const navigate = useNavigate();
 
     useEffect(() => {
         fetch("http://localhost:8080/activity")
             .then((res) => res.json())
             .then((data) => {
-                const sortedLogs = data.sort((a, b) => a.user.localeCompare(b.user));
-                setLogs(sortedLogs);
+                setLogs(data);
             })
             .catch((err) => {
                 console.error("Ошибка при получении активности:", err);
             });
     }, []);
+
+    useEffect(() => {
+        const sorted = [...logs].sort((a, b) => {
+            if (sortBy === "user") return (a.username || "").localeCompare(b.username || "");
+            if (sortBy === "date") return new Date(b.date) - new Date(a.date);
+            return 0;
+        });
+
+        const filtered = sorted.filter((log) =>
+            (log.username || "").toLowerCase().includes(search.toLowerCase()) ||
+            (log.email || "").toLowerCase().includes(search.toLowerCase())
+        );
+
+        setFilteredLogs(filtered);
+        setCurrentPage(1);
+    }, [logs, search, sortBy]);
+
+    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+    const paginatedLogs = filteredLogs.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     const handleLogout = () => {
         localStorage.removeItem("currentUser");
@@ -30,6 +56,29 @@ const DashboardPage = () => {
                     🚪 Выйти
                 </button>
             </div>
+
+            <div className="row mb-3">
+                <div className="col-md-6">
+                    <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Поиск по имени или email..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                <div className="col-md-6">
+                    <select
+                        className="form-select"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                    >
+                        <option value="user">Сортировка по имени</option>
+                        <option value="date">Сортировка по дате</option>
+                    </select>
+                </div>
+            </div>
+
             <table className="table table-bordered">
                 <thead>
                 <tr>
@@ -40,9 +89,9 @@ const DashboardPage = () => {
                 </tr>
                 </thead>
                 <tbody>
-                {logs.map((log, i) => (
+                {paginatedLogs.map((log, i) => (
                     <tr key={i}>
-                        <td>{log.user}</td>
+                        <td>{log.username}</td>
                         <td>{log.email}</td>
                         <td>{log.date}</td>
                         <td>
@@ -58,6 +107,24 @@ const DashboardPage = () => {
                 ))}
                 </tbody>
             </table>
+
+            <div className="d-flex justify-content-between align-items-center mt-3">
+                <button
+                    className="btn btn-outline-primary"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                >
+                    ⬅ Назад
+                </button>
+                <span>Страница {currentPage} из {totalPages}</span>
+                <button
+                    className="btn btn-outline-primary"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                >
+                    Вперёд ➡
+                </button>
+            </div>
         </div>
     );
 };
