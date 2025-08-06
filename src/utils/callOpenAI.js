@@ -8,7 +8,7 @@ export async function callOpenAI(prompt) {
             "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: "gpt-3.5-turbo", // можешь сменить на "gpt-4", если у тебя доступ
+            model: "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.7
         })

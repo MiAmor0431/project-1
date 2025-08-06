@@ -11,8 +11,10 @@ const servicesList = [
     "SatuBooster ERS",
     "ИИ ассистент",
     "VOIP",
-    "ThirdPart",
-    "Басқалары"
+    "Лендинг беттерін әзірлеу және орнату",
+    "Веб-сайт құру және ассистентпен біріктіру",
+    "Сату/маркетингтік автоворонка құру",
+    "Ішкі процестерді автоматтандыру және кеңес беру"
 ];
 
 const UserPage = () => {
@@ -29,6 +31,7 @@ const UserPage = () => {
     const [chatPrice, setChatPrice] = useState(30);
     const [voipMinutes, setVoipMinutes] = useState(1000);
     const [voipPrice, setVoipPrice] = useState(9);
+    const [customServicePrices, setCustomServicePrices] = useState({});
 
     const [data, setData] = useState({ email: "" });
     const [errors, setErrors] = useState({ email: "" });
@@ -85,7 +88,8 @@ const UserPage = () => {
                 chatPrice,
                 duration,
                 voipMinutes,
-                voipPrice
+                voipPrice,
+                customServicePrices
             });
             const url = URL.createObjectURL(blob);
             window.open(url, "_blank");
@@ -94,6 +98,12 @@ const UserPage = () => {
         } finally {
             setIsGenerating(false);
         }
+    };
+    const handleCustomPriceChange = (service, value) => {
+        setCustomServicePrices((prev) => ({
+            ...prev,
+            [service]: Number(value)
+        }));
     };
 
     const handleSendEmail = async () => {
@@ -173,19 +183,40 @@ const UserPage = () => {
                         <label className="form-label fw-bold">Выберите услуги:</label>
                         <div className="d-flex flex-column gap-2 mb-3">
                             {servicesList.map((service) => (
-                                <div key={service} className="form-check">
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id={service}
-                                        checked={selectedServices.includes(service)}
-                                        onChange={() => handleServiceToggle(service)}
-                                    />
-                                    <label className="form-check-label" htmlFor={service}>
-                                        {service}
-                                    </label>
+                                <div key={service} className="mb-3">
+                                    <div className="form-check">
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            id={service}
+                                            checked={selectedServices.includes(service)}
+                                            onChange={() => handleServiceToggle(service)}
+                                        />
+                                        <label className="form-check-label" htmlFor={service}>
+                                            {service}
+                                        </label>
+                                    </div>
+
+                                    {selectedServices.includes(service) &&
+                                        [
+                                            "Лендинг беттерін әзірлеу және орнату",
+                                            "Веб-сайт құру және ассистентпен біріктіру",
+                                            "Сату/маркетингтік автоворонка құру",
+                                            "Ішкі процестерді автоматтандыру және кеңес беру"
+                                        ].includes(service) && (
+                                            <input
+                                                type="text"
+                                                className="form-control mt-2"
+                                                placeholder="Қызмет бағасын енгізіңіз (₸)"
+                                                value={customServicePrices[service] || ""}
+                                                onChange={(e) =>
+                                                    handleCustomPriceChange(service, e.target.value)
+                                                }
+                                            />
+                                        )}
                                 </div>
                             ))}
+
                         </div>
 
                         {isERSSelected && (

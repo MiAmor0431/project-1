@@ -19,12 +19,16 @@ export async function generatePDF({
                                       duration = 1,
                                       voipMinutes = 1000,
                                       voipPricePerMinute = 9,
+                                      customServicePrices = {}
                                   }) {
     // Загрузка изображений
     const headerBase64 = await loadImageAsBase64(headerImg);
     const footerBase64 = await loadImageAsBase64(footerImg);
     const moBase64 = await loadImageAsBase64(MO);
     const signBase64 = await loadImageAsBase64(sign);
+    const oneTimeServices = ["лендинг", "веб-сайт", "автоворонка", "ішкі процестер", "кеңес"];
+    const monthlyServices = ["ии", "ai", "voip"];
+    const subscriptionServices = ["ers"];
 
     // Цена за менеджеров
     let managerPrice = 0;
@@ -52,7 +56,7 @@ export async function generatePDF({
             total += remaining * 1000;
             breakdown.push(`${remaining} × 1 000`);
         }
-
+        total *= duration;
         return { total, breakdown: breakdown.join(" + ") };
     }
 
@@ -64,12 +68,24 @@ export async function generatePDF({
 
     // VOIP
 
-    // Статические услуги
     const servicePrices = services.reduce((sum, s) => {
         const l = s.toLowerCase();
         if (l.includes("bitrix")) return sum + 200000;
         if (l.includes("crm")) return sum + 150000;
         if (l.includes("whatsapp")) return sum + 100000;
+        if (l.includes("лендинг"))
+            return sum + (customServicePrices["Лендинг беттерін әзірлеу және орнату"] || 150000);
+
+        if (l.includes("веб-сайт"))
+            return sum + (customServicePrices["Веб-сайт құру және ИИ-ассистентпен біріктіру"] || 250000);
+
+        if (l.includes("автоворонка"))
+            return sum + (customServicePrices["Сату/маркетингтік автоворонка құру"] || 100000);
+
+        if (l.includes("ішкі процестер") || l.includes("кеңес"))
+            return sum + (customServicePrices["Ішкі процестерді автоматтандыру және кеңес беру"] || 120000);
+
+
         return sum;
     }, 0);
 
@@ -86,54 +102,139 @@ export async function generatePDF({
     if (isERS && ersPrice > 0) {
         if (duration === 3) ersDiscount = ersPrice * 0.05;
         else if (duration === 6) ersDiscount = ersPrice * 0.10;
-        else if (duration === 12) ersDiscount = ersPrice * 0.15;
+        else if (duration === 12) ersDiscount = ersPrice * 0.20;
     }
     const voip = services.some(s => s.toLowerCase().includes("voip"));
     const voipPrice = voip ? voipMinutes * voipPricePerMinute : 0;
 
-    const totalBeforeDiscount = servicePrices + (isERS ? ersPrice : managerPrice) + aiPrice + voipPrice;
+    const totalBeforeDiscount = servicePrices
+        + (isERS ? ersPrice : 0)
+        + (hasAI ? aiPrice : 0)
+        + (voip ? voipPrice : 0);
     const finalTotal = totalBeforeDiscount - ersDiscount;
+
+    const oneTimeTotal = servicePrices;
+    const monthlyTotal = (hasAI ? aiPrice : 0) + (voip ? voipPrice : 0);
+    const subscriptionTotal = isERS ? (ersPrice - ersDiscount) : 0;
 
     // Таблица
     const tableBody = [
-        [{ text: "Қызмет атауы", style: "boldBlackText" }, { text: "Құны", style: "boldBlackText" }],
+        [{ text: "Қызмет атауы", style: "boldBlackText" },{ text: "Сипаттама", style: "boldBlackText" }, { text: "Құны", style: "boldBlackText" }],
         ...services.map(service => {
             const lower = service.toLowerCase();
-            if (lower.includes("bitrix")) return [{ text: service, style: "boldBlackText" }, { text: "200 000 ₸", style: "boldBlackText" }];
-            if (lower.includes("crm")) return [{ text: service, style: "boldBlackText" }, { text: "150 000 ₸", style: "boldBlackText" }];
-            if (lower.includes("whatsapp")) return [{ text: service, style: "boldBlackText" }, { text: "100 000 ₸", style: "boldBlackText" }];
+
+            if (lower.includes("bitrix")) return [
+                { text: service, style: "boldBlackText" },
+                { text: "", style: "boldBlackText" },
+                { text: "200 000 тг", style: "boldBlackText" }
+            ];
+
+            if (lower.includes("crm")) return [
+                { text: service, style: "boldBlackText" },
+                { text: "", style: "boldBlackText" },
+                { text: "150 000 тг", style: "boldBlackText" }
+            ];
+
+            if (lower.includes("whatsapp")) return [
+                { text: service, style: "boldBlackText" },
+                { text: "", style: "boldBlackText" },
+                { text: "100 000 тг", style: "boldBlackText" }
+            ];
+
+            if (service === "Лендинг беттерін әзірлеу және орнату") return [
+                { text: service, style: "boldBlackText" },
+                { text: "Лендинг бет (бір беттен тұратын сайт) жасау және іске қосу", style: "boldBlackText" },
+                {
+                    text: `${(customServicePrices[service] || 150000).toLocaleString()} тг`,
+                    style: "boldBlackText"
+                }
+            ];
+
+
+            if (service === "Веб-сайт құру және ассистентпен біріктіру") return [
+                { text: service, style: "boldBlackText" },
+                { text: "Бизнеске арналған көп беттен тұратын веб-сайт және ИИ-ассистентті біріктіру", style: "boldBlackText" },
+                {
+                    text: `${(customServicePrices[service] || 250000).toLocaleString()} тг`,
+                    style: "boldBlackText"
+                }
+            ];
+
+
+            if (service === "Сату/маркетингтік автоворонка құру") return [
+                { text: service, style: "boldBlackText" },
+                { text: "Маркетинг және сатуға арналған автоматтандырылған сценарийлер", style: "boldBlackText" },
+                {
+                    text: `${(customServicePrices[service] || 100000).toLocaleString()} тг`,
+                    style: "boldBlackText"
+                }
+            ];
+
+
+            if (service === "Ішкі процестерді автоматтандыру және кеңес беру") return [
+                { text: service, style: "boldBlackText" },
+                { text: "Ішкі бизнес процестерін автоматтандыру және жеке кеңес беру", style: "boldBlackText" },
+                {
+                    text: `${(customServicePrices[service] || 120000).toLocaleString()} тг`,
+                    style: "boldBlackText"
+                }
+            ];
+
+
+
             if (lower.includes("техподдержка") || lower.includes("техническая")) return null;
             if (lower.includes("ии") || lower.includes("ai")) return null;
             if (lower.includes("ers")) return null;
-            if (lower.includes("VOIP")) return null;
-            return [{ text: service, style: "boldBlackText" }, { text: "—", style: "boldBlackText" }];
+            if (lower.includes("voip")) return null;
+
+            return [
+                { text: service, style: "boldBlackText" },
+                { text: "", style: "boldBlackText" },
+                { text: "—", style: "boldBlackText" }
+            ];
         }).filter(Boolean),
 
+
         ...(hasAI ? [[
-            { text: techSupportType === "fixed" ? "ИИ ассистент (тұрақты тариф)" : `ИИ ассистент (${chatCount} чат × ${chatPrice} ₸)`, style: "boldBlackText" },
-            { text: techSupportType === "fixed" ? "150 000 ₸" : `${(chatCount * chatPrice).toLocaleString()} ₸`, style: "boldBlackText" }
+            { text: techSupportType === "fixed" ? "ИИ ассистент (тұрақты тариф)" : `ИИ ассистент (${chatCount} чат × ${chatPrice} тг)`, style: "boldBlackText" },
+            { text: "WhatsApp, Instagram, Telegram арқылы көп арналы интеллектуалды ассистентті теңшеу", style: "boldBlackText" },
+            { text: techSupportType === "fixed" ? "150 000 тг" : `${(chatCount * chatPrice).toLocaleString()} тг`, style: "boldBlackText" }
         ]] : []),
 
         ...(voip ? [[
-            { text: `VOIP (${voipMinutes} мин × ${voipPricePerMinute} ₸)`, style: "boldBlackText" },
-            { text: `${voipPrice.toLocaleString()} ₸`, style: "boldBlackText" }
+            { text: `VOIP (${voipMinutes} мин × ${voipPricePerMinute} тг)`, style: "boldBlackText" },
+            { text: "IP телефонияны қосу және автоматтандыру", style: "boldBlackText" },
+            { text: `${voipPrice.toLocaleString()} тг`, style: "boldBlackText" }
         ]] : []),
 
         ...(isERS ? [[
             { text: `SatuBooster ERS`, style: "boldBlackText" },
-            { text: `${ersPrice.toLocaleString()} ₸`, style: "boldBlackText" }
-        ]] : managerCount > 0 ? [[
-            { text: `Менеджерлер (${managerCount} × ${managerCount > 40 ? 1000 : managerCount > 5 ? 1600 : 3500} ₸)`, style: "boldBlackText" },
-            { text: `${managerPrice.toLocaleString()} ₸`, style: "boldBlackText" }
+            { text: "Жеке SaaS-платформаны толық конфигурациялау және қосу", style: "boldBlackText" },
+            { text: `${ersPrice.toLocaleString()} тг`, style: "boldBlackText" }
         ]] : []),
 
         ...(ersDiscount > 0 ? [[
             { text: `Жеңілдік (${duration} ай ERS)`, style: "boldBlackText" },
-            { text: `–${ersDiscount.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₸`, style: "boldBlackText" }
+            { text: `${duration} айлық жазылымға ${(ersDiscount/ersPrice)*100}% жеңілдік есептелді`, style: "boldBlackText" },
+            { text: `–${ersDiscount.toLocaleString(undefined, { maximumFractionDigits: 0 })} тг`, style: "boldBlackText" }
         ]] : []),
 
-        [{ text: "Жалпы сома", style: "boldBlackText" }, { text: `${finalTotal.toLocaleString()} ₸`, style: "boldBlackText" }]
     ];
+    console.log({
+        services,
+        hasAI,
+        aiPrice,
+        voip,
+        voipPrice,
+        managerCount,
+        managerPrice,
+        servicePrices,
+        isERS,
+        ersPrice,
+        ersDiscount,
+        totalBeforeDiscount,
+        finalTotal
+    });
 
     const docDefinition = {
         content: [
@@ -167,7 +268,7 @@ export async function generatePDF({
             },
 
             {
-                text: `Қымбатты Мырзалар! SatuBooster компаниясы тұтынушыларға қызмет көрсету сапасын жақсарту үшін кәсіби шешімді ұсынады — заманауи жасанды интеллект технологияларын пайдалана отырып, AI чат-ботын енгізу.`,
+                text: `Қымбатты Мырзалар! SatuBooster компаниясы сіздің бизнесіңізге заманауи цифрлық шешім ұсынып, клиенттермен байланыс сапасын арттыруға көмектеседі. Жасанды интеллект негізіндегі автоматтандырылған жүйе арқылы қызмет көрсету жылдамдығы мен тиімділігін арттырамыз.`,
                 style: "boldBlackText",
                 margin: [0, 0, 0, 10]
             },
@@ -183,18 +284,32 @@ export async function generatePDF({
                     "Жүйе өзі жұмыс істейді, менеджер тек нақты клиентпен жұмыс істейді"
                 ],
                 margin: [0, 0, 0, 10],
-                style: "boldBlackText"
+                style: ""
             },
 
 
             { text: "Құны және шарттары:", style: "sectionTitle" },
             {
-                table: { widths: ["*", "*"], body: tableBody },
+                table: { widths: ["*", "*", "*"], body: tableBody },
                 layout: "lightHorizontalLines",
                 margin: [0, 0, 0, 10]
             },
+            {
+                text: "Жалпы бағаның құрылымы:",
+                style: "sectionTitle",
+                margin: [0, 20, 0, 5]
+            },
+            {
+                style: "",
+                ul: [
+                    `Жүйені орнату (бір реттік) : ${oneTimeTotal.toLocaleString()} тг`,
+                    `Ай сайынғы қызметтер: ${monthlyTotal.toLocaleString()} тг`,
+                    `Платформа жазылымы (${duration} ай): ${subscriptionTotal.toLocaleString()} тг`,
+                    `Жалпы баға: ${finalTotal.toLocaleString()} тг`
+                ]
+            },
 
-            { text: "", pageBreak: "before" },
+
 
             { text: "Қондыру уақыты:", style: "sectionTitle" },
             {
@@ -205,10 +320,10 @@ export async function generatePDF({
                             { text: "Қадам", style: "boldBlackText" },
                             { text: "Орындалу уақыты", style: "boldBlackText" }
                         ],
-                        ["Анализ и согласование требований", "2 жұмыс күні"],
-                        ["Разработка сценариев и интеграция", "5 жұмыс күні"],
-                        ["Тестирование и доработка", "2 жұмыс күні"],
-                        ["Обучение персонала и запуск", "1 жұмыс күні"]
+                        ["Талаптарды талдау және келісу", "2 жұмыс күні"],
+                        ["Сценарийлерді әзірлеу және біріктіру", "5 жұмыс күні"],
+                        ["Тестілеу және жетілдіру", "2 жұмыс күні"],
+                        ["Қызметкерлерді оқыту және іске қосу", "1 жұмыс күні"]
                     ]
                 },
                 layout: "lightHorizontalLines",
@@ -216,17 +331,9 @@ export async function generatePDF({
             },
 
             {
-                text: "Общий срок внедрения: 5–7 жұмыс күні",
+                text: "Жалпы енгізу мерзімі: 5–7 жұмыс күні",
                 style: "boldBlackText",
                 margin: [0, 0, 0, 10]
-            },
-
-            {
-                text: `Құрметпен,\nБас директор Акимбаев Е.Т\nКомпания SatuBooster\n${new Date().toLocaleDateString("kk-KZ", {
-                    day: "numeric", month: "long", year: "numeric"
-                })}`,
-                style: "boldBlackText",
-                margin: [0, 20, 0, 10]
             },
 
             {
@@ -234,16 +341,16 @@ export async function generatePDF({
                     {
                         width: "auto",
                         stack: [
-                            { image: moBase64, width: 140, absolutePosition: { x: 65, y: 340 } },
-                            { text: "М.О", absolutePosition: { x: 110, y: 380 }, style: "boldBlackText" },
+                            { image: moBase64, width: 140, absolutePosition: { x: 400, y: 550} },
+                            { text: "М.О", absolutePosition: { x: 445, y: 590 }, style: "boldBlackText" },
 
                         ]
                     },
                     {
                         width: "*",
                         stack: [
-                            { image: signBase64, width: 140, absolutePosition: { x: 390, y: 370 } },
-                            { text: "Қолы __________________", absolutePosition: { x: 360, y: 380 }, style: "boldBlackText" },
+                            { image: signBase64, width: 140, absolutePosition: { x: 225, y: 585 } },
+                            { text: `Құрметпен,\nБас директор Акимбаев Е. қолы __________________\nКомпания SatuBooster\n${new Date().toLocaleDateString("kk-KZ", {day: "numeric", month: "long", year: "numeric"})}`, absolutePosition: { x: 40, y: 580 }, style: "boldBlackText" },
                         ]
                     }
                 ],
